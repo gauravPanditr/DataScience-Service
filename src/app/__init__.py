@@ -1,20 +1,26 @@
 from flask import Flask, request, jsonify
 from service.messageService import MessageService
-from kafka import KafkaProducer
+from confluent_kafka import Producer
+import os
+
 import json
 
+from dotenv import load_dotenv
+load_dotenv()
+print("Kafka Bootstrap Servers:", os.getenv('KAFKA_BOOTSTRAP_SERVERS'))
 app = Flask(__name__)
-app.config.from_pyfile('config.py')
 
 messageService = MessageService()
-producer = KafkaProducer(
-    bootstrap_servers=app.config['KAFKA_BOOTSTRAP_SERVERS'],
-    security_protocol='SASL_SSL',
-    sasl_mechanism='SCRAM-SHA-256',
-    sasl_plain_username=app.config['KAFKA_USERNAME'],
-    sasl_plain_password=app.config['KAFKA_PASSWORD'],
-    value_serializer=lambda v: json.dumps(v).encode('utf-8')
-)
+producer_config = {
+    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS'),
+    'security.protocol': 'SASL_SSL',
+    'sasl.mechanisms': 'SCRAM-SHA-256',
+    'sasl.username': os.getenv('KAFKA_USERNAME'),
+    'sasl.password': os.getenv('KAFKA_PASSWORD')
+}
+
+# Initialize the Kafka Producer
+producer = Producer(producer_config)
 
 @app.route('/v1/ds/message', methods=['POST'])
 def handle_message():
@@ -47,4 +53,4 @@ def handle_get():
     return 'Hello world' 
 
 if __name__ == "__main__":
-    app.run(host="localhost", port=8000, debug=True)
+    app.run(host="localhost", port=8080, debug=True)
